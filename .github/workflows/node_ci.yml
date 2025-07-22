@@ -1,0 +1,59 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descargar el código del repositorio
+      - uses: actions/checkout@v3
+
+      # 2. Instalar Node.js versión 20
+      - name: Instalar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      # 3. Instalar dependencias
+      - name: Instalar dependencias
+        run: npm install
+
+      # 4. Iniciar el servidor en background
+      - name: Iniciar servidor
+        run: |
+          node index.js &
+          sleep 5
+
+      # 5. Probar que el endpoint funcione
+      - name: Probar endpoint /saludo
+        run: |
+          response=$(curl -s -w "%{http_code}" http://localhost:3000/saludo)
+          echo "Respuesta del servidor: $response"
+
+          # Verificar que el código de respuesta sea 200
+          if [[ "${response: -3}" == "200" ]]; then
+            echo "✅ Test pasó - Servidor responde correctamente"
+          else
+            echo "❌ Test falló - Servidor no responde"
+            exit 1
+          fi
+
+      # 6. Verificar contenido de la respuesta
+      - name: Verificar contenido JSON
+        run: |
+          content=$(curl -s http://localhost:3000/saludo)
+          echo "Contenido: $content"
+
+          # Verificar que contenga el mensaje esperado
+          if echo "$content" | grep -q "Hola desde el backend"; then
+            echo "✅ Contenido correcto"
+          else
+            echo "❌ Contenido incorrecto"
+            exit 1
+          fi
